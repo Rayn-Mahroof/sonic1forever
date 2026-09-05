@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1a0a2e" />
+  <title>Sonic 1 Forever — Web Port</title>
+  <link rel="icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="favicon.ico" />
+  <link rel="manifest" href="manifest.json" />
+
+  <style>
+    :root {
+      --sonic-blue: #0066cc;
+      --sonic-gold: #f5c400;
+      --sonic-red:  #cc2200;
+      --bg-dark:    #0d0718;
+      --bg-mid:     #1a0a2e;
+      --text:       #e8e0f0;
+      --panel:      rgba(255,255,255,0.06);
+      --border:     rgba(255,255,255,0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg-dark);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+
+    /* ── SPLASH SCREEN ─────────────────────────────────── */
+    #splash {
+      position: fixed; inset: 0; z-index: 1000;
+      background: radial-gradient(ellipse at center, #1e0b36 0%, var(--bg-dark) 70%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; padding: 20px;
+      transition: opacity .5s ease;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+
+    .logo-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .logo-title {
+      font-size: clamp(22px, 5vw, 40px);
+      font-weight: 900; letter-spacing: 2px;
+      background: linear-gradient(135deg, var(--sonic-gold) 20%, #fff 60%, var(--sonic-gold) 80%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+    .logo-sub {
+      font-size: clamp(11px, 2.5vw, 15px);
+      color: rgba(255,255,255,.5); letter-spacing: 4px; text-transform: uppercase;
+    }
+
+    /* SONIC PIXEL ART (CSS) */
+    .sonic-pixel {
+      width: 1px; height: 1px;
+      position: relative;
+      transform: scale(5);
+      margin: 30px auto;
+      image-rendering: pixelated;
+      animation: sonicBob 0.5s steps(1) infinite;
+    }
+    @keyframes sonicBob {
+      0%,100% { filter: drop-shadow(0 0 8px rgba(70,120,255,.8)); }
+      50%      { filter: drop-shadow(0 0 14px rgba(70,120,255,1)); }
+    }
+
+    /* Progress bar */
+    #progress-wrap {
+      width: min(360px, 90vw);
+      background: rgba(255,255,255,.08);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      height: 10px; overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--sonic-blue), var(--sonic-gold));
+      border-radius: 100px;
+      transition: width .3s ease;
+    }
+    #status-text {
+      font-size: 13px; opacity: .6;
+      letter-spacing: .5px; text-align: center;
+      min-height: 18px;
+    }
+
+    /* MOD section on splash */
+    .mod-splash-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 20px;
+      width: min(360px, 90vw);
+      text-align: center;
+    }
+    .mod-splash-panel h3 {
+      font-size: 13px; font-weight: 600;
+      color: var(--sonic-gold);
+      text-transform: uppercase; letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+    .mod-splash-panel p { font-size: 12px; opacity: .55; margin-bottom: 12px; line-height: 1.5; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 9px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all .18s ease; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--sonic-blue), #0044aa);
+      color: #fff; box-shadow: 0 3px 12px rgba(0,80,200,.4);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(0,80,200,.55); }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-gold {
+      background: linear-gradient(135deg, var(--sonic-gold), #d4a000);
+      color: #1a0a00; box-shadow: 0 3px 12px rgba(245,196,0,.3);
+    }
+    .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(245,196,0,.4); }
+    .btn-gold:active { transform: scale(.97); }
+    .btn-ghost {
+      background: var(--panel); border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,.12); }
+
+    .launch-btn {
+      padding: 13px 36px; font-size: 15px; border-radius: 12px;
+    }
+
+    /* ── GAME CONTAINER ──────────────────────────────────── */
+    #game-wrap {
+      position: fixed; inset: 0;
+      display: none; /* shown after launch */
+      flex-direction: column;
+      background: #000;
+    }
+    #game-wrap.active { display: flex; }
+
+    /* Top HUD bar */
+    #hud {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 40px; z-index: 100;
+      background: linear-gradient(to bottom, rgba(0,0,0,.85), transparent);
+      display: flex; align-items: center;
+      padding: 0 12px; gap: 8px;
+      opacity: 0; transition: opacity .3s;
+    }
+    #hud.visible { opacity: 1; }
+    #hud-title {
+      font-size: 12px; font-weight: 700; letter-spacing: 1px;
+      color: rgba(255,255,255,.7); text-transform: uppercase;
+      flex: 1;
+    }
+    .hud-btn {
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.85); border-radius: 6px;
+      font-size: 11px; font-weight: 600; padding: 4px 9px;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+    }
+    .hud-btn:hover { background: rgba(255,255,255,.22); }
+    .hud-btn svg { width: 13px; height: 13px; }
+
+    /* Canvas */
+    #canvas {
+      display: block;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      touch-action: none;
+    }
+
+    /* ── TOUCH CONTROLS ──────────────────────────────────── */
+    #touch-controls {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 160px; z-index: 200;
+      display: none; /* shown only on touch */
+      pointer-events: none;
+      padding: env(safe-area-inset-bottom) 0 0;
+    }
+    #touch-controls.visible { display: block; }
+
+    .touch-dpad {
+      position: absolute; bottom: 20px; left: 20px;
+      width: 140px; height: 140px;
+      pointer-events: auto;
+    }
+    .dpad-btn {
+      position: absolute;
+      background: rgba(255,255,255,.15);
+      border: 2px solid rgba(255,255,255,.3);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: rgba(255,255,255,.8);
+      -webkit-user-select: none; user-select: none;
+      cursor: pointer; transition: background .1s;
+    }
+    .dpad-btn:active, .dpad-btn.pressed {
+      background: rgba(255,255,255,.35);
+    }
+    #dpad-left  { left:0;   top:45px; width:44px; height:44px; border-radius: 8px 0 0 8px; }
+    #dpad-right { right:0;  top:45px; width:44px; height:44px; border-radius: 0 8px 8px 0; }
+    #dpad-up    { left:45px;top:0;    width:44px; height:44px; border-radius: 8px 8px 0 0; }
+    #dpad-down  { left:45px;bottom:0; width:44px; height:44px; border-radius: 0 0 8px 8px; }
+    #dpad-center { left:45px;top:45px; width:44px; height:44px;
+                   background: rgba(255,255,255,.07);
+                   border: 1px solid rgba(255,255,255,.1);
+                   border-radius: 4px; }
+
+    .touch-actions {
+      position: absolute; bottom: 20px; right: 20px;
+      display: flex; flex-direction: column; gap: 10px;
+      align-items: flex-end;
+      pointer-events: auto;
+    }
+    .action-row { display: flex; gap: 10px; }
+    .action-btn {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(255,255,255,.15);
+      border: 2px solid rgba(255,255,255,.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,.85);
+      letter-spacing: .5px; text-transform: uppercase;
+      -webkit-user-select: none; user-select: none;
+      cursor: pointer; transition: background .1s;
+    }
+    .action-btn:active, .action-btn.pressed {
+      background: rgba(255,255,255,.4);
+    }
+    #btn-jump  { background: rgba(0,120,255,.35); border-color: rgba(80,160,255,.6); }
+    #btn-start { width: 44px; height: 44px; font-size: 10px;
+                 background: rgba(255,255,255,.1); }
+
+    /* Gradient fade at bottom for touch controls */
+    .touch-overlay-bg {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 200px;
+      background: linear-gradient(to top, rgba(0,0,0,.6), transparent);
+      pointer-events: none;
+    }
+
+    /* ── MOD MANAGER PANEL ───────────────────────────────── */
+    #mod-panel {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.85);
+      backdrop-filter: blur(12px);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #mod-panel.open { display: flex; }
+
+    .mod-panel-inner {
+      background: var(--bg-mid);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      width: min(480px, 100%);
+      max-height: min(600px, 90vh);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .mod-panel-header {
+      padding: 20px 24px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .mod-panel-header h2 {
+      font-size: 16px; font-weight: 700;
+      flex: 1; color: var(--sonic-gold);
+    }
+    .mod-panel-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+
+    .mod-drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 28px 20px;
+      text-align: center;
+      margin-bottom: 18px;
+      transition: all .2s;
+      cursor: pointer;
+    }
+    .mod-drop-zone:hover, .mod-drop-zone.dragging {
+      border-color: var(--sonic-blue);
+      background: rgba(0,100,200,.1);
+    }
+    .mod-drop-zone .drop-icon { font-size: 32px; margin-bottom: 8px; }
+    .mod-drop-zone h4 { font-size: 14px; margin-bottom: 4px; }
+    .mod-drop-zone p  { font-size: 12px; opacity: .5; }
+
+    #mod-file-input { display: none; }
+
+    .mod-list { display: flex; flex-direction: column; gap: 8px; }
+    .mod-item {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .mod-item-icon { font-size: 20px; flex-shrink: 0; }
+    .mod-item-info { flex: 1; min-width: 0; }
+    .mod-item-name {
+      font-size: 13px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mod-item-size { font-size: 11px; opacity: .45; margin-top: 2px; }
+    .mod-item-remove {
+      background: none; border: none; color: rgba(255,80,80,.7);
+      font-size: 16px; cursor: pointer; padding: 4px;
+      border-radius: 6px; flex-shrink: 0;
+    }
+    .mod-item-remove:hover { color: #ff4444; background: rgba(255,0,0,.1); }
+
+    .mod-note {
+      font-size: 11px; opacity: .45; line-height: 1.6;
+      margin-top: 14px;
+    }
+    .mod-note strong { color: var(--sonic-gold); opacity: 1; }
+
+    .mod-panel-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+
+    /* ── SETTINGS PANEL ──────────────────────────────────── */
+    #settings-panel {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.85);
+      backdrop-filter: blur(12px);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #settings-panel.open { display: flex; }
+
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row label { font-size: 13px; }
+    .settings-row span  { font-size: 12px; opacity: .45; display: block; }
+
+    .toggle {
+      position: relative; width: 44px; height: 24px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,.15);
+      border-radius: 24px;
+      transition: .25s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; top: 3px;
+      background: white; border-radius: 50%;
+      transition: .25s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--sonic-blue); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .btn { font-size: 12px; padding: 8px 14px; }
+      .launch-btn { padding: 11px 28px; font-size: 14px; }
+    }
+
+    /* iOS safe areas */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      #touch-controls {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .touch-actions { bottom: calc(20px + env(safe-area-inset-bottom)); }
+      .touch-dpad    { bottom: calc(20px + env(safe-area-inset-bottom)); }
+    }
+
+    /* Spinner for initial WASM compile */
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,.12);
+      border-top-color: var(--sonic-blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Keyboard hint */
+    .key-hint {
+      display: inline-block; background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 5px; padding: 2px 7px;
+      font-size: 11px; font-family: monospace;
+    }
+
+    .controls-grid {
+      display: grid; grid-template-columns: auto 1fr;
+      gap: 6px 14px; font-size: 12px; opacity: .65;
+      margin-top: 12px;
+    }
+    .controls-grid span:nth-child(odd) { text-align: right; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ SPLASH -->
+<div id="splash">
+  <div class="logo-wrap">
+    <div class="logo-title">Sonic 1 Forever</div>
+    <div class="logo-sub">Web Port · Emscripten</div>
+  </div>
+
+  <!-- inline Sonic pixel art via canvas, drawn by JS -->
+  <canvas id="sonic-art" width="40" height="27" style="image-rendering:pixelated;transform:scale(5);margin:20px auto;display:block;"></canvas>
+
+  <div id="progress-wrap" style="display:none">
+    <div id="progress-bar"></div>
+  </div>
+  <div id="status-text">Preparing…</div>
+
+  <div class="mod-splash-panel">
+    <h3>🎮 Mod Loader</h3>
+    <p>Drop a <strong>mod folder</strong> or <strong>Data.rsdk</strong> file before launching.<br/>
+       Mods replace the game's Data directory content.</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-ghost" onclick="openModPanel()">📁 Manage Mods</button>
+    </div>
+    <div id="splash-mod-count" style="font-size:11px;opacity:.4;margin-top:8px;display:none"></div>
+  </div>
+
+  <button class="btn btn-primary launch-btn" id="launch-btn" onclick="launchGame()">
+    ▶ Launch Game
+  </button>
+
+  <div class="controls-grid">
+    <span><span class="key-hint">Arrow Keys</span></span><span>Move</span>
+    <span><span class="key-hint">Z / X / Space</span></span><span>Jump / Action</span>
+    <span><span class="key-hint">Enter</span></span><span>Start / Pause</span>
+    <span><span class="key-hint">F</span></span><span>Fullscreen</span>
+    <span><span class="key-hint">M</span></span><span>Mute</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ GAME -->
+<div id="game-wrap">
+  <div id="hud">
+    <span id="hud-title">Sonic 1 Forever</span>
+    <button class="hud-btn" onclick="toggleFullscreen()" title="Fullscreen">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 3h5v2H5v3H3zm9 0h5v5h-2V5h-3zm-9 9h2v3h3v2H3zm12 3h-3v2h5v-5h-2z"/></svg>
+      Full
+    </button>
+    <button class="hud-btn" onclick="openSettingsPanel()" title="Settings">⚙</button>
+    <button class="hud-btn" onclick="openModPanel()" title="Mods">🎮 Mods</button>
+    <button class="hud-btn" onclick="showSplash()" title="Back">✕</button>
+  </div>
+
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+
+  <div id="touch-controls">
+    <div class="touch-overlay-bg"></div>
+    <div class="touch-dpad">
+      <div class="dpad-btn" id="dpad-center"></div>
+      <div class="dpad-btn" id="dpad-up"    data-key="ArrowUp">▲</div>
+      <div class="dpad-btn" id="dpad-down"  data-key="ArrowDown">▼</div>
+      <div class="dpad-btn" id="dpad-left"  data-key="ArrowLeft">◀</div>
+      <div class="dpad-btn" id="dpad-right" data-key="ArrowRight">▶</div>
+    </div>
+    <div class="touch-actions">
+      <div class="action-row">
+        <div class="action-btn" id="btn-start" data-key="Enter">START</div>
+        <div class="action-btn" id="btn-jump"  data-key="z">JUMP</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ MOD PANEL -->
+<div id="mod-panel">
+  <div class="mod-panel-inner">
+    <div class="mod-panel-header">
+      <span style="font-size:20px">🎮</span>
+      <h2>Mod Manager</h2>
+      <button class="btn btn-ghost" style="padding:6px 12px" onclick="closeModPanel()">✕ Close</button>
+    </div>
+    <div class="mod-panel-body">
+      <div class="mod-drop-zone" id="mod-drop-zone" onclick="document.getElementById('mod-file-input').click()">
+        <div class="drop-icon">📂</div>
+        <h4>Drop mod files here or tap to browse</h4>
+        <p>Supports: .rsdk, .xmf, and any mod data files</p>
+      </div>
+      <input type="file" id="mod-file-input" multiple accept=".rsdk,.xmf,*" />
+
+      <div class="mod-list" id="mod-list"></div>
+
+      <p class="mod-note">
+        <strong>How mods work:</strong> Files you add here are loaded into the engine's
+        virtual filesystem, overlaying the default <code>Data.rsdk.xmf</code>. A full
+        replacement <code>Data.rsdk</code> will replace the entire game data.
+        Mods are stored in your browser session (not uploaded anywhere).
+      </p>
+    </div>
+    <div class="mod-panel-footer">
+      <button class="btn btn-ghost" onclick="clearAllMods()">🗑 Clear All</button>
+      <button class="btn btn-primary" onclick="closeModPanel()">✓ Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ SETTINGS PANEL -->
+<div id="settings-panel">
+  <div class="mod-panel-inner">
+    <div class="mod-panel-header">
+      <span style="font-size:20px">⚙️</span>
+      <h2>Settings</h2>
+      <button class="btn btn-ghost" style="padding:6px 12px" onclick="closeSettingsPanel()">✕ Close</button>
+    </div>
+    <div class="mod-panel-body">
+      <div class="settings-row">
+        <div>
+          <label>Touch Controls</label>
+          <span>D-Pad and buttons for mobile</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-touch" onchange="updateTouchControls()" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>Pixel Filter</label>
+          <span>Smooth vs crisp rendering</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-filter" onchange="updateFilter()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>HUD Bar</label>
+          <span>Show top controls bar in-game</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-hud" onchange="updateHud()" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>Mute Audio</label>
+          <span>Silence all game audio</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-mute" onchange="updateMute()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>Lock Orientation</label>
+          <span>Force landscape on mobile</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-orient" onchange="updateOrientation()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="mod-panel-footer">
+      <button class="btn btn-primary" onclick="closeSettingsPanel()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ SCRIPTS -->
+<script>
+/* ─── State ──────────────────────────────────────────────────── */
+const mods = [];        // { name, size, data: ArrayBuffer }
+let gameStarted  = false;
+let totalBytes   = 0;
+let loadedBytes  = 0;
+let isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+/* ─── Sonic pixel art (CSS box-shadow approach) ──────────────── */
+(function drawSonicSprite() {
+  const c = document.getElementById('sonic-art');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  // Simple standing Sonic silhouette in blue/tan
+  const pixels = [
+    // row, col, color  (0-indexed, 40w x 27h canvas)
+    // Head
+    ...[...Array(6)].flatMap((_,i)=>[[3,20+i,'#4848b4'],[3,19+i,'#4848b4']]),
+  ];
+  // Just fill a simple sonic shape using the palette from the existing sprite
+  const W = 40, H = 27;
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+  function px(x, y, r, g, b) {
+    if (x<0||y<0||x>=W||y>=H) return;
+    const i=(y*W+x)*4; d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=255;
+  }
+  // blue body
+  for(let x=18;x<28;x++) for(let y=5;y<18;y++) px(x,y,72,72,180);
+  // tan face
+  for(let x=19;x<25;x++) for(let y=7;y<13;y++) px(x,y,252,180,144);
+  // shoes
+  for(let x=16;x<22;x++) px(x,17,200,20,20);
+  for(let x=22;x<28;x++) px(x,17,200,20,20);
+  // eye
+  px(22,9,0,0,0); px(24,9,255,255,255);
+  ctx.putImageData(img, 0, 0);
+})();
+
+/* ─── Mod manager ────────────────────────────────────────────── */
+function openModPanel()  { document.getElementById('mod-panel').classList.add('open'); }
+function closeModPanel() { document.getElementById('mod-panel').classList.remove('open'); updateSplashModCount(); }
+function openSettingsPanel()  { document.getElementById('settings-panel').classList.add('open'); }
+function closeSettingsPanel() { document.getElementById('settings-panel').classList.remove('open'); }
+
+function updateSplashModCount() {
+  const el = document.getElementById('splash-mod-count');
+  if (mods.length) {
+    el.textContent = `${mods.length} mod(s) loaded`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function renderModList() {
+  const list = document.getElementById('mod-list');
+  list.innerHTML = '';
+  mods.forEach((mod, i) => {
+    const item = document.createElement('div');
+    item.className = 'mod-item';
+    item.innerHTML = `
+      <span class="mod-item-icon">📦</span>
+      <div class="mod-item-info">
+        <div class="mod-item-name">${mod.name}</div>
+        <div class="mod-item-size">${(mod.size/1024).toFixed(1)} KB</div>
+      </div>
+      <button class="mod-item-remove" onclick="removeMod(${i})">✕</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function removeMod(i) {
+  mods.splice(i, 1);
+  renderModList();
+}
+
+function clearAllMods() {
+  mods.length = 0;
+  renderModList();
+}
+
+document.getElementById('mod-file-input').addEventListener('change', function(e) {
+  handleModFiles(e.target.files);
+});
+
+function handleModFiles(files) {
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      mods.push({ name: file.name, size: file.size, data: e.target.result });
+      renderModList();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// Drag-and-drop for mod panel
+const dropZone = document.getElementById('mod-drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragging'); });
+dropZone.addEventListener('dragleave',()=> dropZone.classList.remove('dragging'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragging');
+  handleModFiles(e.dataTransfer.files);
+});
+
+// Also support dropping on splash
+document.getElementById('splash').addEventListener('dragover', e => {
+  e.preventDefault();
+  document.querySelector('.mod-splash-panel').style.borderColor='var(--sonic-blue)';
+});
+document.getElementById('splash').addEventListener('dragleave', () => {
+  document.querySelector('.mod-splash-panel').style.borderColor='';
+});
+document.getElementById('splash').addEventListener('drop', e => {
+  e.preventDefault();
+  document.querySelector('.mod-splash-panel').style.borderColor='';
+  if (e.dataTransfer.files.length) {
+    handleModFiles(e.dataTransfer.files);
+    openModPanel();
+  }
+});
+
+/* ─── Settings ───────────────────────────────────────────────── */
+function updateTouchControls() {
+  const on = document.getElementById('toggle-touch').checked;
+  const tc = document.getElementById('touch-controls');
+  if (on && isTouchDevice) tc.classList.add('visible');
+  else tc.classList.remove('visible');
+}
+function updateFilter() {
+  const smooth = document.getElementById('toggle-filter').checked;
+  document.getElementById('canvas').style.imageRendering = smooth ? 'auto' : 'pixelated';
+}
+function updateHud() {
+  const on = document.getElementById('toggle-hud').checked;
+  document.getElementById('hud').classList.toggle('visible', on);
+}
+function updateMute() {
+  const muted = document.getElementById('toggle-mute').checked;
+  // emscripten SDL2 uses Web Audio — suspend/resume context
+  if (window._sonicAudioCtx) {
+    muted ? window._sonicAudioCtx.suspend() : window._sonicAudioCtx.resume();
+  }
+}
+function updateOrientation() {
+  const lock = document.getElementById('toggle-orient').checked;
+  if (screen.orientation && screen.orientation.lock) {
+    if (lock) screen.orientation.lock('landscape').catch(()=>{});
+    else screen.orientation.unlock();
+  }
+}
+
+/* ─── Fullscreen ─────────────────────────────────────────────── */
+function toggleFullscreen() {
+  const el = document.getElementById('game-wrap');
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen).call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen).call(document);
+  }
+}
+
+/* ─── Keyboard shortcuts ─────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); e.preventDefault(); }
+  if (e.key === 'm' || e.key === 'M') {
+    const t = document.getElementById('toggle-mute');
+    t.checked = !t.checked; updateMute();
+  }
+  if (e.key === 'Escape') {
+    closeModPanel(); closeSettingsPanel();
+  }
+});
+
+/* ─── Touch D-Pad / Buttons ──────────────────────────────────── */
+function simulateKey(key, down) {
+  const type = down ? 'keydown' : 'keyup';
+  const ev = new KeyboardEvent(type, { key, code: key, bubbles: true });
+  document.getElementById('canvas').dispatchEvent(ev);
+  document.dispatchEvent(ev);
+}
+
+document.querySelectorAll('.dpad-btn[data-key], .action-btn[data-key]').forEach(btn => {
+  const key = btn.dataset.key;
+  function start(e) {
+    e.preventDefault();
+    btn.classList.add('pressed');
+    simulateKey(key, true);
+  }
+  function end(e) {
+    e.preventDefault();
+    btn.classList.remove('pressed');
+    simulateKey(key, false);
+  }
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('touchend',   end,   { passive: false });
+  btn.addEventListener('touchcancel',end,   { passive: false });
+  btn.addEventListener('mousedown',  start);
+  btn.addEventListener('mouseup',    end);
+  btn.addEventListener('mouseleave', end);
+});
+
+// HUD hide on tap (toggle)
+let hudTimer;
+document.getElementById('canvas').addEventListener('click', () => {
+  const hud = document.getElementById('hud');
+  hud.classList.toggle('visible');
+  clearTimeout(hudTimer);
+  if (hud.classList.contains('visible')) {
+    hudTimer = setTimeout(() => {
+      if (document.getElementById('toggle-hud').checked)
+        hud.classList.remove('visible');
+    }, 3000);
+  }
+});
+
+/* ─── Splash / launch flow ───────────────────────────────────── */
+function showSplash() {
+  document.getElementById('game-wrap').classList.remove('active');
+  document.getElementById('splash').classList.remove('hidden');
+  document.getElementById('splash').style.display = 'flex';
+}
+
+function launchGame() {
+  // Show game canvas
+  document.getElementById('splash').classList.add('hidden');
+  setTimeout(() => {
+    document.getElementById('splash').style.display = 'none';
+  }, 500);
+  document.getElementById('game-wrap').classList.add('active');
+  document.getElementById('canvas').focus();
+
+  // Show HUD
+  if (document.getElementById('toggle-hud').checked) {
+    document.getElementById('hud').classList.add('visible');
+  }
+
+  // Show touch controls if device is touch
+  if (isTouchDevice && document.getElementById('toggle-touch').checked) {
+    document.getElementById('touch-controls').classList.add('visible');
+  }
+
+  if (!gameStarted) {
+    gameStarted = true;
+    loadAndRunWasm();
+  }
+}
+
+/* ─── WASM loader ────────────────────────────────────────────── */
+function setProgress(pct, msg) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+  if (msg) document.getElementById('status-text').textContent = msg;
+}
+
+function loadAndRunWasm() {
+  // Show progress
+  document.getElementById('progress-wrap').style.display = 'block';
+  setProgress(0, 'Loading engine…');
+
+  const canvas = document.getElementById('canvas');
+
+  // Pre-configure Module object BEFORE loading index.js
+  window.Module = {
+    canvas: canvas,
+    noInitialRun: false,
+
+    // Status callback from Emscripten
+    setStatus: function(text) {
+      if (!text) {
+        setProgress(100, 'Starting…');
+        return;
+      }
+      const m = text.match(/\((\d+)\/(\d+)\)/);
+      if (m) {
+        const pct = Math.round(parseInt(m[1]) / parseInt(m[2]) * 85) + 5;
+        setProgress(pct, text.replace(/\(\d+\/\d+\)/,'').trim() || 'Loading…');
+      } else {
+        document.getElementById('status-text').textContent = text;
+      }
+    },
+
+    monitorRunDependencies: function(remaining) {
+      if (remaining === 0) setProgress(95, 'Initializing…');
+    },
+
+    // Locate files — lets us override Data.rsdk with mod data
+    locateFile: function(path, prefix) {
+      // If a mod provides a replacement data file, use that
+      if (path === 'index.data' || path === 'Data.rsdk.xmf' || path.endsWith('.rsdk')) {
+        const rsdk = mods.find(m => m.name.endsWith('.rsdk') || m.name.endsWith('.xmf'));
+        if (rsdk) {
+          return URL.createObjectURL(new Blob([rsdk.data]));
+        }
+      }
+      return prefix + path;
+    },
+
+    // Inject mod files into FS before the game starts
+    preRun: [function() {
+      mods.forEach(mod => {
+        if (!mod.name.endsWith('.rsdk') && !mod.name.endsWith('.xmf')) {
+          // Write non-data mods as files in the virtual FS
+          try {
+            const arr = new Uint8Array(mod.data);
+            Module.FS.writeFile('/' + mod.name, arr);
+          } catch(e) { console.warn('Mod FS write:', e); }
+        }
+      });
+    }],
+
+    print: function(text) { console.log('[Sonic]', text); },
+    printErr: function(text) { console.error('[Sonic]', text); },
+
+    onRuntimeInitialized: function() {
+      setProgress(100, 'Ready!');
+      // Try to capture AudioContext for mute control
+      if (window.AudioContext || window.webkitAudioContext) {
+        setTimeout(() => {
+          window._sonicAudioCtx = window.__audioContext ||
+            (window.webkitAudioContext
+              ? new webkitAudioContext()
+              : null);
+        }, 500);
+      }
+    },
+  };
+
+  // Load index.js (Emscripten glue)
+  setProgress(5, 'Fetching engine script…');
+  const script = document.createElement('script');
+  script.src = 'index.js';
+  script.onerror = () => {
+    document.getElementById('status-text').textContent =
+      '❌ Failed to load index.js — make sure all files are in the same folder.';
+  };
+  document.head.appendChild(script);
+
+  setProgress(10, 'Loading game data…');
+}
+
+/* ─── Touch: prevent default scroll on canvas ──────────────── */
+document.getElementById('canvas').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.getElementById('canvas').addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+
+/* ─── Resize: keep canvas full screen ───────────────────────── */
+function resizeCanvas() {
+  const canvas = document.getElementById('canvas');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+/* ─── iOS: wake lock workaround ─────────────────────────────── */
+if ('wakeLock' in navigator) {
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && gameStarted) {
+      try { await navigator.wakeLock.request('screen'); } catch(e) {}
+    }
+  });
+}
+
+/* ─── PWA Service Worker registration ───────────────────────── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('[SW] Registered:', reg.scope))
+      .catch(err => console.warn('[SW] Registration failed:', err));
+  });
+}
+</script>
+
+</body>
+</html>

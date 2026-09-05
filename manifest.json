@@ -1,0 +1,20 @@
+{
+  "name": "Sonic 1 Forever",
+  "short_name": "Sonic 1",
+  "description": "Sonic 1 Forever web port — play in your browser!",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0d0718",
+  "theme_color": "#0d0718",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["games"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
